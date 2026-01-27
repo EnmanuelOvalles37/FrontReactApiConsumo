@@ -1,10 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-// src/Paginas/Admin/AdminClientesAccesoPage.tsx
+ // src/Paginas/Admin/AdminClientesAccesoPage.tsx
 // Panel de administración de accesos de clientes
 
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import api from "../../Servicios/api";
 
 interface ClienteAcceso {
@@ -39,7 +38,6 @@ interface Empresa {
 }
 
 export default function AdminClientesAccesoPage() {
-  const navigate = useNavigate();
   const [clientes, setClientes] = useState<ClienteAcceso[]>([]);
   const [stats, setStats] = useState<Estadisticas | null>(null);
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
@@ -68,9 +66,25 @@ export default function AdminClientesAccesoPage() {
   const cargarEmpresas = async () => {
     try {
       const res = await api.get("/empresas");
-      setEmpresas(res.data || []);
+      
+      
+      // Manejar diferentes formatos de respuesta
+      let empresasArray: Empresa[] = [];
+      
+      if (Array.isArray(res.data)) {
+        empresasArray = res.data;
+      } else if (res.data && Array.isArray(res.data.data)) {
+        empresasArray = res.data.data;
+      } else if (res.data && Array.isArray(res.data.empresas)) {
+        empresasArray = res.data.empresas;
+      } else if (res.data && Array.isArray(res.data.items)) {
+        empresasArray = res.data.items;
+      }
+      
+      setEmpresas(empresasArray);
     } catch (error) {
       console.error("Error cargando empresas:", error);
+      setEmpresas([]);
     }
   };
 
@@ -82,6 +96,17 @@ export default function AdminClientesAccesoPage() {
       setStats(res.data);
     } catch (error) {
       console.error("Error cargando estadísticas:", error);
+      // Establecer estadísticas por defecto
+      setStats({
+        totalClientes: 0,
+        activos: 0,
+        bloqueados: 0,
+        deshabilitados: 0,
+        sinConfigurar: 0,
+        pendienteCambio: 0,
+        loginUltimos7Dias: 0,
+        loginUltimos30Dias: 0
+      });
     }
   };
 
@@ -94,10 +119,30 @@ export default function AdminClientesAccesoPage() {
       if (estado !== "todos") params.estado = estado;
 
       const res = await api.get("/admin/clientes-acceso", { params });
-      setClientes(res.data.data || []);
-      setTotalPaginas(res.data.totalPaginas || 1);
+     
+      
+      // Manejar diferentes formatos de respuesta
+      let clientesArray: ClienteAcceso[] = [];
+      let total = 1;
+      
+      if (Array.isArray(res.data)) {
+        clientesArray = res.data;
+      } else if (res.data && Array.isArray(res.data.data)) {
+        clientesArray = res.data.data;
+        total = res.data.totalPaginas || 1;
+      } else if (res.data && Array.isArray(res.data.clientes)) {
+        clientesArray = res.data.clientes;
+        total = res.data.totalPaginas || 1;
+      } else if (res.data && Array.isArray(res.data.items)) {
+        clientesArray = res.data.items;
+        total = res.data.totalPaginas || 1;
+      }
+      
+      setClientes(clientesArray);
+      setTotalPaginas(total);
     } catch (error) {
       console.error("Error cargando clientes:", error);
+      setClientes([]);
     } finally {
       setLoading(false);
     }
@@ -274,7 +319,7 @@ export default function AdminClientesAccesoPage() {
               className="px-3 py-2 border rounded-lg"
             >
               <option value="">Todas</option>
-              {empresas.map(e => (
+              {empresas && empresas.length > 0 && empresas.map(e => (
                 <option key={e.id} value={e.id}>{e.nombre}</option>
               ))}
             </select>
@@ -357,7 +402,10 @@ export default function AdminClientesAccesoPage() {
             {loading ? (
               <tr>
                 <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
-                  Cargando...
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600"></div>
+                    Cargando...
+                  </div>
                 </td>
               </tr>
             ) : clientes.length === 0 ? (

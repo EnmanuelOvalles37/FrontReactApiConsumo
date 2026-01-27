@@ -1,6 +1,4 @@
-// src/Componentes/Dashboard/DashboardEmpleadoPersonal.tsx
-// Dashboard personal para empleados (clientes)
-
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from "react";
 import { useAuth } from "../../Context/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -43,8 +41,9 @@ export default function DashboardEmpleadoPersonal() {
   const [resumen, setResumen] = useState<Resumen | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingConsumos, setLoadingConsumos] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Filtro por mes
+  // Filtro por mes - por defecto el mes actual
   const [mesSeleccionado, setMesSeleccionado] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -63,10 +62,16 @@ export default function DashboardEmpleadoPersonal() {
   const cargarPerfil = async () => {
     try {
       setLoading(true);
+      setError(null);
+      
+      
+      
       const res = await api.get("/cliente/mi-perfil");
+      
       setPerfil(res.data);
-    } catch (error) {
-      console.error("Error cargando perfil:", error);
+    } catch (error: any) {
+     
+      setError(error.response?.data?.message || "Error al cargar el perfil");
     } finally {
       setLoading(false);
     }
@@ -78,15 +83,61 @@ export default function DashboardEmpleadoPersonal() {
       const [year, month] = mesSeleccionado.split("-");
       const desde = `${year}-${month}-01`;
       const ultimoDia = new Date(parseInt(year), parseInt(month), 0).getDate();
-      const hasta = `${year}-${month}-${ultimoDia}`;
+      const hasta = `${year}-${month}-${String(ultimoDia).padStart(2, "0")}`;
+
+      
 
       const res = await api.get("/cliente/mis-consumos", {
         params: { desde, hasta }
       });
-      setConsumos(res.data.consumos || []);
-      setResumen(res.data.resumen || null);
-    } catch (error) {
-      console.error("Error cargando consumos:", error);
+      
+      
+
+      // Manejar diferentes formatos de respuesta
+      let consumosArray: Consumo[] = [];
+      let resumenData: Resumen | null = null;
+
+      if (Array.isArray(res.data)) {
+        // Si la respuesta es directamente un array
+       
+        consumosArray = res.data;
+      } else if (res.data && typeof res.data === 'object') {
+        // Si la respuesta es un objeto
+       
+        
+        // Intentar obtener consumos de diferentes propiedades
+        if (Array.isArray(res.data.consumos)) {
+          consumosArray = res.data.consumos;
+        } else if (Array.isArray(res.data.data)) {
+          consumosArray = res.data.data;
+        } else if (Array.isArray(res.data.items)) {
+          consumosArray = res.data.items;
+        }
+
+        // Intentar obtener resumen
+        if (res.data.resumen) {
+          resumenData = res.data.resumen;
+        }
+      }
+
+    
+
+      // Si no hay resumen del backend, calcularlo
+      if (!resumenData && consumosArray.length > 0) {
+        const consumosActivos = consumosArray.filter(c => !c.reversado);
+        resumenData = {
+          totalConsumos: consumosActivos.length,
+          montoTotal: consumosActivos.reduce((sum, c) => sum + (c.monto || 0), 0)
+        };
+      }
+
+      setConsumos(consumosArray);
+      setResumen(resumenData);
+
+    } catch (error: any) {
+      console.error("❌ Error cargando consumos:", error);
+      setConsumos([]);
+      setResumen(null);
     } finally {
       setLoadingConsumos(false);
     }
@@ -104,10 +155,11 @@ export default function DashboardEmpleadoPersonal() {
       minute: "2-digit"
     });
 
+  // Generar opciones de meses (últimos 24 meses para incluir datos históricos)
   const generarOpcionesMeses = () => {
     const meses = [];
     const now = new Date();
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 24; i++) {
       const fecha = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const valor = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, "0")}`;
       const label = fecha.toLocaleDateString("es-DO", { month: "long", year: "numeric" });
@@ -140,15 +192,15 @@ export default function DashboardEmpleadoPersonal() {
     );
   }
 
-  if (!perfil) {
+  if (error || !perfil) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
+        <div className="text-center max-w-md mx-auto p-6">
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <span className="text-3xl">⚠️</span>
           </div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Sin acceso</h2>
-          <p className="text-gray-500 mb-4">No se encontró un perfil asociado.</p>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Error de acceso</h2>
+          <p className="text-gray-500 mb-4">{error || "No se encontró un perfil asociado."}</p>
           <button onClick={handleLogout} className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">
             Cerrar sesión
           </button>
@@ -276,7 +328,14 @@ export default function DashboardEmpleadoPersonal() {
         {/* Historial de Consumos */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h3 className="font-semibold text-gray-900">Mis Consumos</h3>
+            <h3 className="font-semibold text-gray-900">
+              Mis Consumos 
+              {consumos.length > 0 && (
+                <span className="ml-2 text-sm font-normal text-gray-500">
+                  ({consumos.length})
+                </span>
+              )}
+            </h3>
             <select
               value={mesSeleccionado}
               onChange={(e) => setMesSeleccionado(e.target.value)}
@@ -300,6 +359,9 @@ export default function DashboardEmpleadoPersonal() {
               <h4 className="font-medium text-gray-900 mb-1">Sin consumos</h4>
               <p className="text-sm text-gray-500">
                 No tienes consumos en {getNombreMes(mesSeleccionado)}
+              </p>
+              <p className="text-xs text-gray-400 mt-2">
+                Prueba seleccionando otro mes en el filtro
               </p>
             </div>
           ) : (
