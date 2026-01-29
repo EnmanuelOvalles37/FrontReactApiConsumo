@@ -344,7 +344,7 @@ export const refinanciamientoApi = {
 
   async crear(dto: {
     cxcDocumentoId: number;
-    diasParaVencimiento: number;
+    //diasParaVencimiento: number;
     motivo?: string;
     notas?: string;
   }): Promise<{
