@@ -143,6 +143,45 @@ export default function RegistroConsumoPage() {
   };
 
   const buscarCliente = async () => {
+  setErr(null);
+  setCliente(null);
+
+  const ced = (cedula ?? "").replace(/\D/g, "");
+  if (!ced || ced.length < 9) {
+    setErr("Ingresa una cédula válida");
+    return;
+  }
+
+  setBuscando(true);
+  try {
+    const { data } = await api.get(`/clientes/cedula/${encodeURIComponent(ced)}`);
+
+    if (Array.isArray(data?.matches) && data.matches.length > 0) {
+      const match = data.matches[0];
+      
+      // ✅ Mapear correctamente los datos
+      setCliente({
+        clienteId: match.id,           // ← CAMBIO: usar "id" del backend
+        empresaId: match.empresaId,
+        empresaNombre: match.empresaNombre,
+        nombre: match.nombre,
+        saldo: match.saldo,
+        cedula: cedula  // Guardar la cédula formateada
+      });
+      
+      // Focus en monto después de encontrar cliente
+      setTimeout(() => montoInputRef.current?.focus(), 100);
+    } else {
+      setErr("Cliente no encontrado");
+    }
+  } catch (e: any) {
+    setErr(e?.response?.status === 404 ? "Cliente no encontrado" : "Error consultando cliente");
+  } finally {
+    setBuscando(false);
+  }
+};
+
+  /*const buscarCliente = async () => {
     setErr(null);
     setCliente(null);
 
@@ -168,7 +207,7 @@ export default function RegistroConsumoPage() {
     } finally {
       setBuscando(false);
     }
-  };
+  };*/
 
   // ==========================================
   // FUNCIÓN REGISTRAR CON MODAL DE IMPRESIÓN
@@ -205,14 +244,14 @@ export default function RegistroConsumoPage() {
       const saldoAnterior = cliente.saldo;
 
       const response = await api.post("/consumos", {
-        clienteId: cliente.clienteId,
-        proveedorId: contexto.proveedorId,
-        tiendaId: contexto.tiendaId,
-        cajaId: contexto.cajaId,
-        monto: montoNum,
-        concepto: factura || null,
-        nota: nota || null,
-      });
+  clienteId: cliente.clienteId,  // ← ESTO FALTA
+  proveedorId: contexto.proveedorId,
+  tiendaId: contexto.tiendaId,
+  cajaId: contexto.cajaId,
+  monto: montoNum,
+  concepto: factura || null,
+  nota: nota || null,
+});
 
       // ==========================================
       // PREPARAR DATOS PARA EL COMPROBANTE
