@@ -1,35 +1,39 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
-  import type { AsignacionInfo } from "../assets/types/Types";
-
-export type User = {
-  id?: number;           // <-- AGREGAR ESTO
+export interface User {
+  id?: number;
   usuario: string;
   rol: string;
+  rolId: number;
   permisos: string[];
   expiracion?: string;
-  rolId: number;
-  // Campos para tipo de usuario
   esCajero?: boolean;
-  tipoUsuario?: string; // "admin" | "usuario" | "cajero" | "backoffice" | "empleador"
-  asignacion?: AsignacionInfo;
-};
+  tipoUsuario?: string;
+  asignacion?: any;
+  clienteInfo?: any;
+  requiereCambioContrasena?: boolean;
+}
 
 export interface LoginRequest {
   usuario: string;
   contrasena: string;
 }
 
+
+
 export interface LoginResponse {
   token: string;
-  id: number;            // <-- AGREGAR ESTO
+  id: number;
+  rolId: number;
   usuario: string;
   rol: string;
-  rolId: number;         // <-- AGREGAR ESTO
   expiracion: string;
   permisos: string[];
   esCajero?: boolean;
   tipoUsuario?: string;
-  asignacion?: AsignacionInfo;
+  requiereCambioContrasena?: boolean;
+  asignacion?: any;
+  clienteInfo?: any;
 }
 
 export interface AuthContextType {
@@ -51,15 +55,38 @@ export type LoginResult = {
   message?: string;
   data?: {
     token: string;
-    id: number;           // <-- AGREGAR ESTO
+    id: number;
     usuario: string;
     rol: string;
-    rolId: number;        // <-- AGREGAR ESTO
+    rolId: number;
     permisos: string[];
     expiracion: string;
-    esCajero: boolean;
-    tipoUsuario: string;
-    asignacion?: AsignacionInfo;
-    requiereCambioContrasena: string;
+    esCajero?: boolean;              
+    tipoUsuario?: string;            
+    asignacion?: AsignacionInfo;     
+    clienteInfo?: ClienteLoginInfo;  
+    requiereCambioContrasena?: boolean;  
   };
 };
+
+export interface AsignacionInfo {
+  proveedorId: number;
+  proveedorNombre?: string;
+  tiendaId?: number;
+  tiendaNombre?: string;
+  cajaId?: number;
+  cajaNombre?: string;
+  rol?: string;
+}
+
+export interface ClienteLoginInfo {
+  clienteId: number;
+  codigo: string;
+  empresaId: number;
+  empresaNombre: string;
+}
+
+
+
+
+
